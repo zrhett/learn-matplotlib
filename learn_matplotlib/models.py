@@ -61,7 +61,7 @@ class DataModel:
     def read_stock_from_db(self, table_name, start, end):
         """读取数据库表中指定时间范围内的数据"""
         sql = f'select * from {table_name} where Date>="{start}" and Date<"{end}"'
-        return pd.read_sql(sql, self.db_engine, index_col='Date')
+        return pd.read_sql(sql, self.db_engine, index_col='Date', parse_dates=['Date'])
 
     def read_all_stocks_to_dict(self, start, end):
         stock_list = list()

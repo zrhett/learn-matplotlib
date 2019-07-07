@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib import dates
 
 
 class StockView(tk.Frame):
@@ -21,7 +22,8 @@ class StockView(tk.Frame):
 
     def build_view(self):
         self.fig = Figure(figsize=(12, 5), facecolor='white')
-        self.axis_t = self.fig.add_subplot(121)
+        self.axis_t = self.fig.add_subplot(221)
+        self.axis_v = self.fig.add_subplot(223)
         self.axis_c = self.fig.add_subplot(122)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
@@ -56,7 +58,7 @@ class StockView(tk.Frame):
 
     def plot(self, data, start_date, end_date):
         stocks, df_a = data
-        # self.plot_trend(stocks, start_date, end_date)
+        self.plot_trend(stocks, start_date, end_date)
         self.plot_corr(df_a, start_date, end_date)
         self.update()
 
@@ -85,7 +87,9 @@ class StockView(tk.Frame):
         # self.axis_t.spines['bottom'].set_position(('outward', 20))
         self.axis_t.spines['right'].set_visible(False)
         self.axis_t.spines['top'].set_visible(False)
-        self.axis_t.xaxis.set_ticks_position('bottom')
+        # self.axis_t.xaxis.set_ticks_position('bottom')
+        # self.axis_t.xaxis.set_major_locator(dates.MonthLocator(interval=1))
+        # self.axis_t.xaxis.set_major_formatter(dates.DateFormatter('%b'))
         self.axis_t.set_ylim(y_limit.get_min() - 300, y_limit.get_max() + 300)
         self.axis_t.set_xlabel('Date')
         self.axis_t.set_ylabel('Price')
