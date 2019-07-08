@@ -3,6 +3,7 @@ from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import dates
+from matplotlib.gridspec import GridSpec
 
 
 class StockView(tk.Frame):
@@ -21,10 +22,16 @@ class StockView(tk.Frame):
         self.build_view()
 
     def build_view(self):
-        self.fig = Figure(figsize=(12, 5), facecolor='white')
-        self.axis_t = self.fig.add_subplot(221)
-        self.axis_v = self.fig.add_subplot(223)
-        self.axis_c = self.fig.add_subplot(122)
+        self.fig = Figure(facecolor='white')
+        # self.axis_t = self.fig.add_subplot(221)
+        # self.axis_v = self.fig.add_subplot(223)
+        # self.axis_c = self.fig.add_subplot(122)
+        gs = GridSpec(ncols=2, nrows=2, left=0.1, right=0.9, wspace=0.35, hspace=0.35,
+                      width_ratios=[0.7, 0.3], height_ratios=[0.85, 0.15])
+        self.axis_t = self.fig.add_subplot(gs[0, 0])
+        self.axis_v = self.fig.add_subplot(gs[1, 0])
+        self.axis_c = self.fig.add_subplot(gs[0:, 1])
+
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
@@ -98,7 +105,7 @@ class StockView(tk.Frame):
 
     def plot_corr(self, df_a, start_date, end_date):
         corr = df_a[start_date: end_date].corr()
-        corimage = self.axis_c.imshow(corr, cmap='OrRd', alpha=0.75)
+        corimage = self.axis_c.imshow(corr, cmap='OrRd', alpha=0.75, aspect='auto')
 
         if self.colorbar is None:
             self.colorbar = self.fig.colorbar(corimage, ax=self.axis_c)
@@ -106,7 +113,7 @@ class StockView(tk.Frame):
             self.colorbar.update_normal(corimage)
 
         self.axis_c.set(xticks=range(len(corr)), yticks=range(len(corr)))
-        self.axis_c.set_xticklabels(corr.columns)
+        self.axis_c.set_xticklabels(corr.columns, fontdict={'rotation': 45})
         self.axis_c.set_yticklabels(corr.columns)
 
     def clear(self):

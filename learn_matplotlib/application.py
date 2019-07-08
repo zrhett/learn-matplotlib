@@ -8,7 +8,7 @@ class AppWindow(tk.Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title('Matplotlib')
-        self.__center_window(1200, 500)
+        self.__center_window(1200, 600)
         self.withdraw()
         self.protocol('WM_DELETE_WINDOW', self._destroyWindow)
 
@@ -22,7 +22,6 @@ class AppWindow(tk.Tk):
         self.view.plot(self.prepare_data(), self.start_date, self.end_date)
 
         self.deiconify()
-
 
     def __center_window(self, width, height):
         screenwidth = self.winfo_screenwidth()
