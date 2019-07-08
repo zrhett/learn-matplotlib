@@ -4,6 +4,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import dates
 from matplotlib.gridspec import GridSpec
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 class StockView(tk.Frame):
@@ -105,16 +106,26 @@ class StockView(tk.Frame):
 
     def plot_corr(self, df_a, start_date, end_date):
         corr = df_a[start_date: end_date].corr()
-        corimage = self.axis_c.imshow(corr, cmap='OrRd', alpha=0.75, aspect='auto')
+        corimage = self.axis_c.imshow(corr, cmap='OrRd', alpha=0.75)
+        divider = make_axes_locatable(self.axis_c)
+        ax_cb = divider.new_horizontal(size='5%', pad=0.05)
+        self.fig.add_axes(ax_cb)
 
         if self.colorbar is None:
-            self.colorbar = self.fig.colorbar(corimage, ax=self.axis_c)
+            self.colorbar = self.fig.colorbar(corimage, cax=ax_cb)
         else:
             self.colorbar.update_normal(corimage)
 
         self.axis_c.set(xticks=range(len(corr)), yticks=range(len(corr)))
-        self.axis_c.set_xticklabels(corr.columns, fontdict={'rotation': 45})
+        self.axis_c.set_xticklabels(corr.columns, fontdict={'rotation': 45, 'ha': 'right', 'rotation_mode': 'anchor'})
         self.axis_c.set_yticklabels(corr.columns)
+
+        for edge, spine in self.axis_c.spines.items():
+            spine.set_visible(False)
+
+        for i in range(len(corr)):
+            for j in range(len(corr)):
+                text = self.axis_c.text(j, i, f'{corr.iloc[i, j]:.1f}', ha='center', va='center', color='k')
 
     def clear(self):
         self.fig.clear()
