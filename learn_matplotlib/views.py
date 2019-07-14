@@ -5,7 +5,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import dates
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+import random
 
 class StockView(tk.Frame):
     colors = ['#5284C4', '#DA4453', '#42B498', '#8A79B5',
@@ -67,19 +67,21 @@ class StockView(tk.Frame):
     def plot(self, data, start_date, end_date):
         stocks, df_a = data
         self.plot_trend(stocks, start_date, end_date)
+        self.plot_volume(stocks, start_date, end_date)
         self.plot_corr(df_a, start_date, end_date)
         self.update()
 
     def plot_trend(self, stocks, start_date, end_date):
         y_limit = CalYTicksLimit()
+        col_name = 'Adj Close'
         for i, stock in enumerate(stocks):
             df = stock['data']
             df = df[start_date: end_date]
-            line = self.axis_t.plot(df['Close'], label=stock['name'], alpha=1.0, c=self.colors[(i + 0) % 8])
-            max = df['Close'].max()
-            max_idx = df['Close'].idxmax()
-            min = df['Close'].min()
-            min_idx = df['Close'].idxmin()
+            line = self.axis_t.plot(df[col_name], label=stock['name'], alpha=1.0, c=self.colors[(i + 0) % 8])
+            max = df[col_name].max()
+            max_idx = df[col_name].idxmax()
+            min = df[col_name].min()
+            min_idx = df[col_name].idxmin()
             y_limit.set(min, max)
 
             color = line[0].get_color()
@@ -126,6 +128,18 @@ class StockView(tk.Frame):
         for i in range(len(corr)):
             for j in range(len(corr)):
                 text = self.axis_c.text(j, i, f'{corr.iloc[i, j]:.1f}', ha='center', va='center', color='k')
+
+    def plot_volume(self, stocks, start_date, end_date):
+        col_name = 'Adj Close'
+        stock = random.choice(stocks)
+        i = stocks.index(stock)
+
+        df = stock['data']
+        df = df[start_date: end_date]
+        line = self.axis_v.bar(df.index, df['Volume'], label=stock['name'], alpha=1.0, color=self.colors[(i + 0) % 8])
+
+
+
 
     def clear(self):
         self.fig.clear()

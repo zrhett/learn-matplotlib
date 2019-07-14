@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from . import views as v
 from . import models as m
-
+import pandas as pd
 
 class AppWindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -37,13 +37,8 @@ class AppWindow(tk.Tk):
     def prepare_data(self):
         stocks = self.data_model.read_all_stocks_to_dict(self.start_date, self.end_date)
 
-        df_a = None
+        df_a = pd.DataFrame()
         for stock in stocks:
-            df = stock['data'][['Close']]
-            df.rename(columns={'Close': stock['name']}, inplace=True)
-            if df_a is None:
-                df_a = df
-            else:
-                df_a = df_a.join(df)
+            df_a[stock['name']] = stock['data']['Close']
 
         return stocks, df_a
