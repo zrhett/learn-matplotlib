@@ -21,7 +21,7 @@ class DataModel:
             {'name': 'Amazon', 'zone': 'US', 'code': 'AMZN'},
             {'name': 'Tesla', 'zone': 'US', 'code': 'TSLA'},
             {'name': 'Baidu', 'zone': 'US', 'code': 'BIDU'},
-            {'name': 'ZTE', 'zone': 'US', 'code': 'ZTCOY'}
+            {'name': 'Sina', 'zone': 'US', 'code': 'SINA'}
         ]
 
     def __init__(self):
@@ -89,7 +89,7 @@ class DataModel:
         """读取数据库中所有股票的收盘数据"""
         df_a = pd.DataFrame()
         for stock in self.stocks:
-            sql = f'select Date,Close from {stock["sql_table"]} where Date>="{start}" and Date<"{end}"'
+            sql = f'select Date,"Adj Close" from {stock["sql_table"]} where Date>="{start}" and Date<"{end}"'
             df = pd.read_sql(sql, self.db_engine, index_col='Date', parse_dates='Date')
             df_a[stock['name']] = df['Adj Close']
 

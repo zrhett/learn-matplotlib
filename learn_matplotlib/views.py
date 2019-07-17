@@ -6,6 +6,7 @@ from matplotlib import dates
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import random
+import numpy as np
 
 class StockView(tk.Frame):
     colors = ['#5284C4', '#DA4453', '#42B498', '#8A79B5',
@@ -76,7 +77,7 @@ class StockView(tk.Frame):
         col_name = 'Adj Close'
         for i, stock in enumerate(stocks):
             df = stock['data']
-            df = df[start_date: end_date]
+            df = np.log(df[start_date: end_date])
             line = self.axis_t.plot(df[col_name], label=stock['name'], alpha=1.0, c=self.colors[(i + 0) % 8])
             max = df[col_name].max()
             max_idx = df[col_name].idxmax()
@@ -100,14 +101,15 @@ class StockView(tk.Frame):
         # self.axis_t.xaxis.set_ticks_position('bottom')
         # self.axis_t.xaxis.set_major_locator(dates.MonthLocator(interval=1))
         # self.axis_t.xaxis.set_major_formatter(dates.DateFormatter('%b'))
-        self.axis_t.set_ylim(y_limit.get_min() - 300, y_limit.get_max() + 300)
+        # self.axis_t.set_ylim(y_limit.get_min() - 300, y_limit.get_max() + 300)
         self.axis_t.set_xlabel('Date')
         self.axis_t.set_ylabel('Price')
         self.axis_t.legend()
         # self.axis_t.grid(linestyle='-')  # solid grid lines
 
     def plot_corr(self, df_a, start_date, end_date):
-        corr = df_a[start_date: end_date].corr()
+        # corr = df_a[start_date: end_date].corr()
+        corr = df_a[start_date: end_date].pct_change().corr()
         corimage = self.axis_c.imshow(corr, cmap='OrRd', alpha=0.75)
         divider = make_axes_locatable(self.axis_c)
         ax_cb = divider.new_horizontal(size='5%', pad=0.05)

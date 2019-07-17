@@ -39,6 +39,6 @@ class AppWindow(tk.Tk):
 
         df_a = pd.DataFrame()
         for stock in stocks:
-            df_a[stock['name']] = stock['data']['Close']
+            df_a[stock['name']] = stock['data']['Adj Close']
 
         return stocks, df_a
