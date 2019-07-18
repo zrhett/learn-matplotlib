@@ -162,9 +162,11 @@ if __name__ == '__main__':
     # for i in r2:
     #     print(i[1])
     #     Image.fromarray(i[0]).show()
-    Image.fromarray(r1[-1][0]).show()
-    Image.fromarray(r2[0][0]).show()
-    print(r1[-1][0].shape)
+    Image.fromarray(r1[0][0]).show()
+    # Image.fromarray(r2[0][0]).show()
+    print(r1[0][0].shape)
     print(r2[0][0].shape)
-    print(np.count_nonzero(r1[-1][0] != r2[0][0]))
-    rx = r1[-1][0] - r2[0][0]
+    print(np.count_nonzero(np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16)) > 5))
+    rx = np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16))
+
+    Image.fromarray(rx).show()
