@@ -52,9 +52,11 @@ for y in range(h):
 Image.fromarray(hhist.T).show()
 
 img_l.show()
-#%%
+#%% 按页面高度分割图片
+jpg_quality = 100
 start = time()
 ratio = 3 / 4
+w, h = img.size
 page_height = int(w / ratio)
 
 def fill_white(page_data, page_height):
@@ -64,18 +66,13 @@ def fill_white(page_data, page_height):
         page_data = np.vstack((page_data, n))
     return page_data
 
-def has_content_at(position, img_gray):
-    """检查指定位置前10像素高度是否有内容"""
-    area = img_gray[position - 10 : position]
-    return np.count_nonzero(area <= 250) > 10
-
-
-
 img_org = np.array(img)
+f_name = filename.split('.')[0]
 
 if img_org.shape[0] <= page_height:
     page_data = fill_white(img_org, page_height)
-    Image.fromarray(page_data).show()
+    img_out = Image.fromarray(page_data)
+    img_out.save(f'{f_name}_out.jpg', quality=jpg_quality)
 else:
     s_position = 0
     e_position = page_height
@@ -84,39 +81,45 @@ else:
     lower_content = False
     upper_content = False
     s_height = 100
+    f_name_index = 0
 
     while has_content:
+        print(f'Position: {s_position} - {e_position}')
         area = img_gray[e_position - 10 : e_position]
         s_list = np.zeros(s_height, np.int)
 
+        # 如果分页最下面10个像素高度有内容，则查找空白进行分割
         if np.count_nonzero(area <= 250) > 10:
-            for i, position in enumerate(range(e_position - s_height, e_position)):
-                s_list[i] = np.count_nonzero(img_gray[position] <= 250)
+            is_blank = False
+            blank_list = []
 
+            for position in range(e_position - s_height, e_position):
+                black_pix = np.count_nonzero(img_gray[position] <= 250)
+                if black_pix == 0 and not is_blank:
+                    blank_list.append(position)
+                    is_blank = True
+                elif black_pix > 0 and is_blank:
+                    blank_list.append(position)
+                    is_blank = False
 
-            for i, position in enumerate(range(e_position - 1, e_position - 101, -1)):
-                if i == 0:
-                    if np.count_nonzero(img_gray[position] <= 250) > 0:
-                        lower_content = True
+            if len(blank_list) % 2 == 1:
+                blank_list = blank_list[:-1]
 
-
+            blank_list = np.array(blank_list).reshape(-1, 2).tolist()
+            print(blank_list)
+            e_position = (blank_list[-1][1] - blank_list[-1][0]) // 2 + blank_list[-1][0]
+            print(f'Change position: {s_position} - {e_position}')
 
         page_data = img_org[s_position : e_position]
-
         page_data = fill_white(page_data, page_height)
+        img_out = Image.fromarray(page_data)
+        f_name_index += 1
+        img_out.save(f'{f_name}_out_{f_name_index}.jpg', quality=jpg_quality)
 
-
-
-# for page in range(pages):
-#     page_data = img_org[cut_h * page : cut_h * (page + 1)]
-#
-#     if page_data.shape[0] < cut_h:
-#         e_h = cut_h - page_data.shape[0]
-#         n = np.zeros((e_h, w, 3), np.uint8) + 255
-#         page_data = np.vstack((page_data, n))
-#
-#     print(page_data.shape)
-#     Image.fromarray(page_data).show()
+        s_position = e_position
+        e_position += page_height
+        if s_position > h:
+            has_content = False
 
 print(time() - start)
 #%%
