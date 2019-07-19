@@ -24,11 +24,11 @@ class StockView(tk.Frame):
         self.build_view()
 
     def build_view(self):
-        self.fig = Figure(facecolor='white')
+        self.fig = Figure(facecolor='white', constrained_layout=False)
         # self.axis_t = self.fig.add_subplot(221)
         # self.axis_v = self.fig.add_subplot(223)
         # self.axis_c = self.fig.add_subplot(122)
-        gs = GridSpec(ncols=2, nrows=2, left=0.1, right=0.9, wspace=0.35, hspace=0.35,
+        gs = GridSpec(ncols=2, nrows=2, figure=self.fig, left=0.1, right=0.9, wspace=0.35, hspace=0.35,
                       width_ratios=[0.7, 0.3], height_ratios=[0.85, 0.15])
         self.axis_t = self.fig.add_subplot(gs[0, 0])
         self.axis_v = self.fig.add_subplot(gs[1, 0])
@@ -70,6 +70,7 @@ class StockView(tk.Frame):
         self.plot_trend(stocks, start_date, end_date)
         self.plot_volume(stocks, start_date, end_date)
         self.plot_corr(df_a, start_date, end_date)
+        self.fig.set_constrained_layout_pads()
         self.update()
 
     def plot_trend(self, stocks, start_date, end_date):
@@ -112,8 +113,9 @@ class StockView(tk.Frame):
         corr = df_a[start_date: end_date].pct_change().corr()
         corimage = self.axis_c.imshow(corr, cmap='OrRd', alpha=0.75)
         divider = make_axes_locatable(self.axis_c)
-        ax_cb = divider.new_horizontal(size='5%', pad=0.05)
-        self.fig.add_axes(ax_cb)
+        # ax_cb = divider.new_horizontal(size='5%', pad=0.05)
+        ax_cb = divider.append_axes('right', size='5%', pad=0.05)
+        # self.fig.add_axes(ax_cb)
 
         if self.colorbar is None:
             self.colorbar = self.fig.colorbar(corimage, cax=ax_cb)

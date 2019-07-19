@@ -130,7 +130,15 @@ class DedaoImage:
 
     def find_head_and_tail_content(self, image, is_top=False):
         """查找开头或结尾的文本行"""
-        img_gray = np.array(image.convert("L"))  # 转为灰度
+        # img_gray = np.array(image.convert("L"))  # 转为灰度
+        # Image.fromarray(img_gray).save('test_gray.jpg', quality=100)
+        # img_bi = np.where(img_gray > 200, 255, 0)
+        # Image.fromarray(img_bi).convert('1').save('test_bi.jpg')
+
+        img_gray = image.convert("L")  # 转为灰度
+        img_gray = img_gray.point(lambda x: 255 if x > 200 else 0).convert('1')
+        img_gray = np.array(img_gray)
+
         s_height = 180
         is_content = False
         content_list = []
