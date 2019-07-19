@@ -118,8 +118,10 @@ class DedaoImage:
 
         for i in range(len(imgs) - 1):
             crop_pos = self.compare_two_text(imgs[i], imgs[i + 1])
-            if crop_pos > 0:
-                imgs[i + 1] = imgs[i + 1].crop((0, crop_pos, imgs[i + 1].size[0], imgs[i + 1].size[1]))
+            if crop_pos is not None:
+                if crop_pos[0] < imgs[i].size[1]:
+                    imgs[i] = imgs[i].crop((0, 0, imgs[i].size[0], crop_pos[0]))
+                imgs[i + 1] = imgs[i + 1].crop((0, crop_pos[1], imgs[i + 1].size[0], imgs[i + 1].size[1]))
 
         img = np.vstack(imgs)
         # Image.fromarray(img).save('out.jpg', quality=100)
@@ -153,7 +155,7 @@ class DedaoImage:
         # img = np.array(image)
         r = []
         for content in content_list:
-            if content[1] - content[0] > 2:
+            if content[1] - content[0] > 30:
                 img = img_gray[content[0] : content[1]]
                 img[img == 254] = 255
                 r.append((img, content))
@@ -177,11 +179,13 @@ class DedaoImage:
 
         for i in range(min(len(r1), len(r2))):
             if r1[i][0].shape == r2[i][0].shape:
-                if np.count_nonzero(np.abs(r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)) >= 5) < 10:
+                # aa = r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)
+                # bb = np.count_nonzero(np.abs(aa) >= 5)
+                if np.count_nonzero(np.abs(r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)) >= 5) < 20:
                     eq_line += 1
         print(eq_line)
 
-        return r2[eq_line - 1][1][1] + 2 if eq_line > 0 else 0
+        return (r1[eq_line - 1][1][1] + 2, r2[eq_line - 1][1][1] + 2) if eq_line > 0 else None
 
     def get_files(self):
         return ['03 论题：你有没有走题.jpg', '03 论题：你有没有走题2.jpg']
@@ -190,7 +194,8 @@ class DedaoImage:
 if __name__ == '__main__':
     dd = DedaoImage()
     img = dd.concat_pictures()
-    dd.cut_long_picture(img, dd.get_files()[0], to_pdf=True)
+    img.save('test_out.jpg', quality=100)
+    # dd.cut_long_picture(img, dd.get_files()[0], to_pdf=True)
 
     # r1 = dd.ff(Image.open('1_out.jpg'), is_top=False)
     # r2 = dd.ff(Image.open('2_out.jpg'), is_top=True)
