@@ -14,7 +14,7 @@ class DedaoImage:
             if pixdata[0, y] <= (250, 250, 250) and pixdata[0, y] >= (210, 210, 210):
                 line_y_list.append(y)
 
-        image = image.crop((0, line_y_list[0], image.size[0], line_y_list[1]))
+        image = image.crop((0, line_y_list[0] + 2, image.size[0], line_y_list[1] - 2))
         return image
 
     def remove_watermark(self, image):
@@ -30,7 +30,7 @@ class DedaoImage:
         print(time() - start)
         return image
 
-    def cut_long_picture(self, image, jpg_quality=100):
+    def cut_long_picture(self, image, filename, to_pdf=False, jpg_quality=100):
         start = time()
         ratio = 3 / 4
         w, h = image.size
@@ -45,25 +45,24 @@ class DedaoImage:
 
         img_org = np.array(image)
         f_name = filename.split('.')[0]
+        img_out_list = []
 
         if img_org.shape[0] <= page_height:
             page_data = fill_white(img_org, page_height)
             img_out = Image.fromarray(page_data)
-            img_out.save(f'{f_name}_out.jpg', quality=jpg_quality)
+            img_out_list.append(img_out)
         else:
             s_position = 0
             e_position = page_height
             has_content = True
-            img_gray = np.array(img.convert("L"))  # 转为灰度
+            img_gray = np.array(image.convert("L"))  # 转为灰度
             lower_content = False
             upper_content = False
             s_height = 100
-            f_name_index = 0
 
             while has_content:
                 print(f'Position: {s_position} - {e_position}')
                 area = img_gray[e_position - 10: e_position]
-                s_list = np.zeros(s_height, np.int)
 
                 # 如果分页最下面10个像素高度有内容，则查找空白进行分割
                 if np.count_nonzero(area <= 250) > 10:
@@ -90,18 +89,21 @@ class DedaoImage:
                 page_data = img_org[s_position: e_position]
                 page_data = fill_white(page_data, page_height)
                 img_out = Image.fromarray(page_data)
-                f_name_index += 1
-                img_out.save(f'{f_name}_out_{f_name_index}.jpg', quality=jpg_quality)
+                img_out_list.append(img_out)
 
                 s_position = e_position
                 e_position += page_height
                 if s_position > h:
                     has_content = False
 
-        print(time() - start)
+        if to_pdf:
+            im1 = img_out_list.pop(0)
+            im1.save(f'{f_name}_out.pdf', "PDF", resolution=100.0, save_all=True, append_images=img_out_list)
+        else:
+            for i, im in enumerate(img_out_list):
+                im.save(f'{f_name}_out_{i + 1}.jpg', quality=jpg_quality)
 
-    def get_files(self):
-        return ['1.jpg', '2.jpg']
+        print(time() - start)
 
     def concat_pictures(self):
         filenames = self.get_files()
@@ -111,15 +113,23 @@ class DedaoImage:
             img = Image.open(filename)
             img = self.remove_head_and_tail(img)
             img = self.remove_watermark(img)
-            img.save(f'{filename.split(".")[0]}_out.jpg', quality=100)
-            # imgs.append(np.array(img))
+            # img.save(f'{filename.split(".")[0]}_out.jpg', quality=100)
+            imgs.append(img)
 
-        # img = np.vstack(imgs)
-        # Image.fromarray(img).show()
+        for i in range(len(imgs) - 1):
+            crop_pos = self.compare_two_text(imgs[i], imgs[i + 1])
+            if crop_pos > 0:
+                imgs[i + 1] = imgs[i + 1].crop((0, crop_pos, imgs[i + 1].size[0], imgs[i + 1].size[1]))
 
-    def ff(self, image, is_top=False):
+        img = np.vstack(imgs)
+        # Image.fromarray(img).save('out.jpg', quality=100)
+        return Image.fromarray(img)
+
+
+    def find_head_and_tail_content(self, image, is_top=False):
+        """查找开头或结尾的文本行"""
         img_gray = np.array(image.convert("L"))  # 转为灰度
-        s_height = 120
+        s_height = 180
         is_content = False
         content_list = []
 
@@ -149,24 +159,68 @@ class DedaoImage:
                 r.append((img, content))
         return r
 
+    def compare_two_text(self, image1, image2):
+        """对比两张图片的开头和末位是否有相同的文本行"""
+        r1 = self.find_head_and_tail_content(image1, is_top=False)
+        r2 = self.find_head_and_tail_content(image2, is_top=True)
+        r1.reverse()
+
+        for r in r1:
+            print(f'1.jpg - {r[1]}: {r[0].shape}')
+            # Image.fromarray(r[0]).show()
+
+        for r in r2:
+            print(f'2.jpg - {r[1]}: {r[0].shape}')
+            # Image.fromarray(r[0]).show()
+
+        eq_line = 0
+
+        for i in range(min(len(r1), len(r2))):
+            if r1[i][0].shape == r2[i][0].shape:
+                if np.count_nonzero(np.abs(r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)) >= 5) < 10:
+                    eq_line += 1
+        print(eq_line)
+
+        return r2[eq_line - 1][1][1] + 2 if eq_line > 0 else 0
+
+    def get_files(self):
+        return ['03 论题：你有没有走题.jpg', '03 论题：你有没有走题2.jpg']
+
+
 if __name__ == '__main__':
     dd = DedaoImage()
-    # dd.concat_pictures()
-    r1 = dd.ff(Image.open('1_out.jpg'), is_top=False)
-    r2 = dd.ff(Image.open('2_out.jpg'), is_top=True)
+    img = dd.concat_pictures()
+    dd.cut_long_picture(img, dd.get_files()[0], to_pdf=True)
 
-    # for i in r1:
-    #     print(i[1])
-    #     Image.fromarray(i[0]).show()
+    # r1 = dd.ff(Image.open('1_out.jpg'), is_top=False)
+    # r2 = dd.ff(Image.open('2_out.jpg'), is_top=True)
+    # r1.reverse()
     #
-    # for i in r2:
-    #     print(i[1])
-    #     Image.fromarray(i[0]).show()
-    Image.fromarray(r1[0][0]).show()
-    # Image.fromarray(r2[0][0]).show()
-    print(r1[0][0].shape)
-    print(r2[0][0].shape)
-    print(np.count_nonzero(np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16)) > 5))
-    rx = np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16))
+    # for r in r1:
+    #     print(f'1.jpg - {r[1]}: {r[0].shape}')
+    #     # Image.fromarray(r[0]).show()
+    #
+    # for r in r2:
+    #     print(f'2.jpg - {r[1]}: {r[0].shape}')
+    #     # Image.fromarray(r[0]).show()
+    #
+    # eq_line = 0
+    #
+    # for i in range(min(len(r1), len(r2))):
+    #     if r1[i][0].shape == r2[i][0].shape:
+    #         if np.count_nonzero(np.abs(r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)) >= 5) < 10:
+    #             eq_line += 1
+    #
+    # print(eq_line)
 
-    Image.fromarray(rx).show()
+
+
+
+    # Image.fromarray(r1[0][0]).show()
+    #
+    # print(r1[0][0].shape)
+    # print(r2[0][0].shape)
+    # print(np.count_nonzero(np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16)) > 5))
+    # rx = np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16))
+    #
+    # Image.fromarray(rx).show()
