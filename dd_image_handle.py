@@ -1,7 +1,8 @@
 from PIL import Image
-import numpy as np
 from time import time
-
+import numpy as np
+import os
+import fnmatch
 
 class DedaoImage:
     def remove_head_and_tail(self, image):
@@ -105,12 +106,12 @@ class DedaoImage:
 
         print(time() - start)
 
-    def concat_pictures(self):
-        filenames = self.get_files()
+    def concat_pictures(self, dir_path, filenames):
+        """垂直拼接一组图片"""
         imgs = []
 
         for filename in filenames:
-            img = Image.open(filename)
+            img = Image.open(f'{dir_path}/{filename}')
             img = self.remove_head_and_tail(img)
             img = self.remove_watermark(img)
             # img.save(f'{filename.split(".")[0]}_out.jpg', quality=100)
@@ -127,19 +128,57 @@ class DedaoImage:
         # Image.fromarray(img).save('out.jpg', quality=100)
         return Image.fromarray(img)
 
+    def handle_jpgs_in_dir(self, dir_path):
+        file_list = self.get_files(dir_path)
+
+        for files in file_list:
+            print(files)
+            img = self.concat_pictures(dir_path, files)
+            img.save(f'{dir_path}/outs/{files[0].split(".")[0]}_out.jpg', quality=100)
+
+
+    # def find_head_and_tail_content(self, image, is_top=False):
+    #     """查找开头或结尾的文本行"""
+    #     img_gray = np.array(image.convert("L"))  # 转为灰度
+    #
+    #     s_height = 180
+    #     is_content = False
+    #     content_list = []
+    #
+    #     r_begin = 0 if is_top else image.size[1] - s_height
+    #     r_end = s_height if is_top else image.size[1]
+    #
+    #     for position in range(r_begin, r_end):
+    #         black_pix = np.count_nonzero(img_gray[position] <= 250)
+    #         if black_pix > 0 and not is_content:
+    #             content_list.append(position)
+    #             is_content = True
+    #         elif black_pix == 0 and is_content:
+    #             content_list.append(position)
+    #             is_content = False
+    #
+    #     if len(content_list) % 2 == 1:
+    #         content_list = content_list[:-1]
+    #
+    #     content_list = np.array(content_list).reshape(-1, 2).tolist()
+    #     print(content_list)
+    #     # img = np.array(image)
+    #     r = []
+    #     for content in content_list:
+    #         if content[1] - content[0] > 30:
+    #             img = img_gray[content[0] : content[1]]
+    #             img[img == 254] = 255
+    #             r.append((img, content))
+    #     return r
 
     def find_head_and_tail_content(self, image, is_top=False):
         """查找开头或结尾的文本行"""
-        # img_gray = np.array(image.convert("L"))  # 转为灰度
-        # Image.fromarray(img_gray).save('test_gray.jpg', quality=100)
-        # img_bi = np.where(img_gray > 200, 255, 0)
-        # Image.fromarray(img_bi).convert('1').save('test_bi.jpg')
-
         img_gray = image.convert("L")  # 转为灰度
-        img_gray = img_gray.point(lambda x: 255 if x > 200 else 0).convert('1')
+        img_gray = img_gray.point(lambda x: 255 if x > 220 else 0).convert('1') # 二值化
+        # img_gray.show()
         img_gray = np.array(img_gray)
 
-        s_height = 180
+        s_height = 180  # 文本搜索垂直范围
         is_content = False
         content_list = []
 
@@ -147,7 +186,7 @@ class DedaoImage:
         r_end = s_height if is_top else image.size[1]
 
         for position in range(r_begin, r_end):
-            black_pix = np.count_nonzero(img_gray[position] <= 250)
+            black_pix = np.count_nonzero(img_gray[position] == False)
             if black_pix > 0 and not is_content:
                 content_list.append(position)
                 is_content = True
@@ -159,13 +198,15 @@ class DedaoImage:
             content_list = content_list[:-1]
 
         content_list = np.array(content_list).reshape(-1, 2).tolist()
-        print(content_list)
-        # img = np.array(image)
+        print(f'{"顶部" if is_top else "底部"}文本边界：{content_list}')
+
         r = []
         for content in content_list:
-            if content[1] - content[0] > 30:
+            if content[1] - content[0] > 26:
                 img = img_gray[content[0] : content[1]]
-                img[img == 254] = 255
+                if img.shape[0] == 32:  # 正常情况下文字高度为33，如果为32则在最后添加一行空白像素
+                    img = np.vstack((img, np.ones((1, img.shape[1]), np.bool)))
+                    content[1] += 1
                 r.append((img, content))
         return r
 
@@ -173,7 +214,7 @@ class DedaoImage:
         """对比两张图片的开头和末位是否有相同的文本行"""
         r1 = self.find_head_and_tail_content(image1, is_top=False)
         r2 = self.find_head_and_tail_content(image2, is_top=True)
-        r1.reverse()
+        # r1.reverse()
 
         for r in r1:
             print(f'1.jpg - {r[1]}: {r[0].shape}')
@@ -183,57 +224,62 @@ class DedaoImage:
             print(f'2.jpg - {r[1]}: {r[0].shape}')
             # Image.fromarray(r[0]).show()
 
-        eq_line = 0
+        eq_r1_index, eq_r2_index = -1, -1
 
-        for i in range(min(len(r1), len(r2))):
-            if r1[i][0].shape == r2[i][0].shape:
-                # aa = r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)
-                # bb = np.count_nonzero(np.abs(aa) >= 5)
-                if np.count_nonzero(np.abs(r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)) >= 5) < 20:
-                    eq_line += 1
-        print(eq_line)
+        for i in range(len(r1)):
+            for j in range(len(r2)):
+                if r1[i][0].shape == r2[j][0].shape:
+                    # aa = np.count_nonzero(r1[i][0] != r2[j][0])
+                    if np.count_nonzero(r1[i][0] != r2[j][0]) < 100:
+                        if eq_r1_index == -1:
+                            eq_r1_index = i
+                        if eq_r2_index == -1:
+                            eq_r2_index = j
 
-        return (r1[eq_line - 1][1][1] + 2, r2[eq_line - 1][1][1] + 2) if eq_line > 0 else None
+        print(eq_r1_index, eq_r2_index)
 
-    def get_files(self):
-        return ['03 论题：你有没有走题.jpg', '03 论题：你有没有走题2.jpg']
+        return (r1[eq_r1_index][1][1] + 2, r2[eq_r2_index][1][1] + 2) if (eq_r1_index != -1 and eq_r2_index != -1) else None
 
+
+    def get_files(self, dir_path):
+        filenames = os.listdir(dir_path)
+        filenames = fnmatch.filter(filenames, '*[!_out].jpg')
+        filenames.sort()
+
+        # 将文件名按标题分组
+        l_names = []
+        keyword = '-1'
+
+        for name in filenames:
+            if name.startswith(keyword):
+                s_names.append(name)
+            else:
+                s_names = [name]
+                l_names.append(s_names)
+                keyword = name.split('.')[0]
+
+
+        return l_names
+
+    def convert_jpgs_to_pdf(self, dir_path, pdf_name):
+        filenames = os.listdir(dir_path)
+        filenames = fnmatch.filter(filenames, '*_out.jpg')
+        filenames.sort()
+        img_list = []
+        for name in filenames:
+            print(f'读取：{name}')
+            img_list.append(Image.open(f'{dir_path}/{name}'))
+
+        print('保存为pdf文件')
+        img1 = img_list.pop(0)
+        img1.save(f'{dir_path}/{pdf_name}.pdf', "PDF", resolution=100.0, save_all=True, append_images=img_list)
 
 if __name__ == '__main__':
     dd = DedaoImage()
-    img = dd.concat_pictures()
-    img.save('test_out.jpg', quality=100)
+    # img = dd.concat_pictures('pics', ['07 假定：你有什么隐含预设.jpg', '07 假定：你有什么隐含预设2.jpg'])
+    # img.save('test_out.jpg', quality=100)
     # dd.cut_long_picture(img, dd.get_files()[0], to_pdf=True)
 
-    # r1 = dd.ff(Image.open('1_out.jpg'), is_top=False)
-    # r2 = dd.ff(Image.open('2_out.jpg'), is_top=True)
-    # r1.reverse()
-    #
-    # for r in r1:
-    #     print(f'1.jpg - {r[1]}: {r[0].shape}')
-    #     # Image.fromarray(r[0]).show()
-    #
-    # for r in r2:
-    #     print(f'2.jpg - {r[1]}: {r[0].shape}')
-    #     # Image.fromarray(r[0]).show()
-    #
-    # eq_line = 0
-    #
-    # for i in range(min(len(r1), len(r2))):
-    #     if r1[i][0].shape == r2[i][0].shape:
-    #         if np.count_nonzero(np.abs(r1[i][0].astype(np.int16) - r2[i][0].astype(np.int16)) >= 5) < 10:
-    #             eq_line += 1
-    #
-    # print(eq_line)
+    dd.handle_jpgs_in_dir('pics')
+    dd.convert_jpgs_to_pdf('pics/outs', '批判性思维15讲')
 
-
-
-
-    # Image.fromarray(r1[0][0]).show()
-    #
-    # print(r1[0][0].shape)
-    # print(r2[0][0].shape)
-    # print(np.count_nonzero(np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16)) > 5))
-    # rx = np.abs(r1[0][0].astype(np.int16)[0:r2[0][0].shape[0]] - r2[0][0].astype(np.int16))
-    #
-    # Image.fromarray(rx).show()
