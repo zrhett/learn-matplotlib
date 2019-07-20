@@ -1,5 +1,6 @@
 from PIL import Image
 from time import time
+from PyPDF2 import PdfFileReader, PdfFileWriter
 import numpy as np
 import os
 import fnmatch
@@ -272,7 +273,19 @@ class DedaoImage:
 
         print('保存为pdf文件')
         img1 = img_list.pop(0)
-        img1.save(f'{dir_path}/{pdf_name}.pdf', "PDF", resolution=100.0, save_all=True, append_images=img_list)
+        pdf_path_name = f'{dir_path}/{pdf_name}.pdf'
+        img1.save(pdf_path_name, "PDF", resolution=100.0, save_all=True, append_images=img_list)
+
+        # 按文件名添加书签
+        pdf = PdfFileWriter()
+        pdf.cloneDocumentFromReader(PdfFileReader(pdf_path_name))
+
+        for i, name in enumerate(filenames):
+            pdf.addBookmark(name.split('_')[0], i)
+
+        with open(pdf_path_name, 'wb') as fout:
+            pdf.write(fout)
+
 
 if __name__ == '__main__':
     dd = DedaoImage()
@@ -280,6 +293,6 @@ if __name__ == '__main__':
     # img.save('test_out.jpg', quality=100)
     # dd.cut_long_picture(img, dd.get_files()[0], to_pdf=True)
 
-    dd.handle_jpgs_in_dir('pics')
+    # dd.handle_jpgs_in_dir('pics')
     dd.convert_jpgs_to_pdf('pics/outs', '批判性思维15讲')
 
